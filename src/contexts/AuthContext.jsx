@@ -21,7 +21,12 @@ export function AuthProvider({ children }) {
   async function signup(email, password) {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     // Создаем базовые категории для нового пользователя
-    await createDefaultCategories(result.user.uid);
+    try {
+      await createDefaultCategories(result.user.uid);
+      console.log('Категории созданы при регистрации');
+    } catch (error) {
+      console.error('Ошибка создания категорий при регистрации:', error);
+    }
     return result;
   }
 
@@ -34,8 +39,19 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      
+      // Если пользователь только что вошел, проверим категории
+      if (user) {
+        try {
+          const { createDefaultCategories } = await import('../services/categoryService');
+          await createDefaultCategories(user.uid);
+        } catch (error) {
+          console.error('Ошибка проверки категорий:', error);
+        }
+      }
+      
       setLoading(false);
     });
 

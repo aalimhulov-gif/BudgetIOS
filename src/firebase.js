@@ -3,12 +3,13 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCHBaz4UzPKwcoUgJhXOZaGibTF0d51h74",
-  authDomain: "budgetios.firebaseapp.com",
-  projectId: "budgetios",
-  storageBucket: "budgetios.appspot.com",
-  messagingSenderId: "290765372665",
-  appId: "1:290765372665:web:04049aa365e159823ff628"
+  apiKey: "AIzaSyCGN93LsNnRGcqGpesVWAg8jP0m6XsQAuA",
+  authDomain: "budget-ami.firebaseapp.com",
+  databaseURL: "https://budget-ami-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "budget-ami",
+  storageBucket: "budget-ami.firebasestorage.app",
+  messagingSenderId: "976854941281",
+  appId: "1:976854941281:web:f40e81033cf52d236af420"
 };
 
 const app = initializeApp(firebaseConfig);

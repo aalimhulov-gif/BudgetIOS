@@ -39,8 +39,19 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      
+      // Если пользователь только что вошел, проверим категории
+      if (user) {
+        try {
+          const { createDefaultCategories } = await import('../services/categoryService');
+          await createDefaultCategories(user.uid);
+        } catch (error) {
+          console.error('Ошибка проверки категорий:', error);
+        }
+      }
+      
       setLoading(false);
     });
 

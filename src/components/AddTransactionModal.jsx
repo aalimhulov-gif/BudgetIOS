@@ -11,6 +11,7 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
     amount: '',
     category: '',
     description: '',
+    owner: 'artur', // По умолчанию Артур
     date: new Date().toISOString().split('T')[0]
   });
   const [newCategory, setNewCategory] = useState('');
@@ -126,6 +127,37 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
                 }`}
               >
                 Доход
+              </button>
+            </div>
+          </div>
+
+          {/* Владелец */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Владелец
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, owner: 'artur'})}
+                className={`p-3 rounded-lg border-2 transition-colors ${
+                  formData.owner === 'artur'
+                    ? 'border-blue-300 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                Артур
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, owner: 'valeria'})}
+                className={`p-3 rounded-lg border-2 transition-colors ${
+                  formData.owner === 'valeria'
+                    ? 'border-purple-300 bg-purple-50 text-purple-700'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                Валерия
               </button>
             </div>
           </div>

@@ -5,7 +5,8 @@ import {
   query, 
   where, 
   onSnapshot, 
-  orderBy 
+  orderBy,
+  addDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { 
@@ -14,6 +15,10 @@ import {
   TrendingUp, 
   TrendingDown, 
   Wallet,
+  User,
+  CreditCard,
+  PieChart,
+  Target,
   Settings
 } from 'lucide-react';
 import AddTransactionModal from './AddTransactionModal';
@@ -42,10 +47,10 @@ export default function Dashboard() {
         transactionsList.push({ id: doc.id, ...doc.data() });
       });
       setTransactions(transactionsList);
-      setLoading(false); // Загрузка завершена даже если транзакций нет
+      setLoading(false);
     }, (error) => {
       console.error('Ошибка получения транзакций:', error);
-      setLoading(false); // Завершаем загрузку даже при ошибке
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -73,16 +78,19 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Вычисление баланса и статистики
-  const income = transactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-    
-  const expenses = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
-    
-  const balance = income - expenses;
+  // Вычисление балансов для Артур и Валерия
+  const arturTransactions = transactions.filter(t => t.owner === 'artur' || (!t.owner && t.type));
+  const valeriaTransactions = transactions.filter(t => t.owner === 'valeria');
+
+  const arturIncome = arturTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  const arturExpenses = arturTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const arturBalance = arturIncome - arturExpenses;
+
+  const valeriaIncome = valeriaTransactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+  const valeriaExpenses = valeriaTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const valeriaBalance = valeriaIncome - valeriaExpenses;
+
+  const totalBalance = arturBalance + valeriaBalance;
 
   const handleLogout = async () => {
     try {
@@ -92,34 +100,52 @@ export default function Dashboard() {
     }
   };
 
+  const addSampleData = async () => {
+    const sampleTransactions = [
+      { type: 'income', amount: 80000, category: 'Зарплата', description: 'Зарплата Артур', owner: 'artur', date: new Date() },
+      { type: 'income', amount: 60000, category: 'Зарплата', description: 'Зарплата Валерия', owner: 'valeria', date: new Date() },
+      { type: 'expense', amount: 15000, category: 'Продукты', description: 'Покупки в Перекрестке', owner: 'artur', date: new Date() },
+      { type: 'expense', amount: 8000, category: 'Развлечения', description: 'Кино и ресторан', owner: 'valeria', date: new Date() },
+      { type: 'expense', amount: 25000, category: 'Коммунальные услуги', description: 'Квартплата', owner: 'artur', date: new Date() }
+    ];
+    
+    for (const transaction of sampleTransactions) {
+      await addDoc(collection(db, 'transactions'), {
+        ...transaction,
+        userId: currentUser.uid,
+        createdAt: new Date()
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="backdrop-blur-md bg-white/10 border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <div className="h-8 w-8 bg-primary-600 rounded-full flex items-center justify-center mr-3">
-                <span className="text-white text-sm font-bold">₽</span>
+              <div className="h-10 w-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-4">
+                <span className="text-white text-lg font-bold">₽</span>
               </div>
-              <h1 className="text-xl font-semibold text-gray-900">BudgetIOS</h1>
+              <h1 className="text-2xl font-bold text-white">BudgetIOS</h1>
             </div>
             
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-300">
                 {currentUser?.email}
               </span>
               <button
                 onClick={handleLogout}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-2 text-gray-300 hover:text-white transition-colors rounded-lg hover:bg-white/10"
               >
                 <LogOut size={20} />
               </button>
@@ -130,53 +156,101 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Statistics Cards */}
+        
+        {/* Personal Balance Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="card">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg mr-3">
-                <Wallet className="h-6 w-6 text-green-600" />
+          {/* Артур */}
+          <div className="profile-card">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="h-12 w-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mr-3">
+                  <User className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Артур</h3>
+                  <p className="text-sm text-gray-300">{arturTransactions.length} операций</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Баланс</p>
-                <p className={`text-2xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {balance.toLocaleString('ru-RU')} ₽
-                </p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-green-400">Доходы:</span>
+                <span className="font-semibold text-green-400">{arturIncome.toLocaleString('ru-RU')} ₽</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-red-400">Расходы:</span>
+                <span className="font-semibold text-red-400">{arturExpenses.toLocaleString('ru-RU')} ₽</span>
+              </div>
+              <div className="border-t border-white/20 pt-2">
+                <div className="flex justify-between">
+                  <span className="text-white font-medium">Баланс:</span>
+                  <span className={`font-bold text-xl ${arturBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {arturBalance.toLocaleString('ru-RU')} ₽
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="card">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                <TrendingUp className="h-6 w-6 text-blue-600" />
+          {/* Валерия */}
+          <div className="profile-card">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="h-12 w-12 bg-gradient-to-r from-purple-500 to-pink-600 rounded-full flex items-center justify-center mr-3">
+                  <User className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Валерия</h3>
+                  <p className="text-sm text-gray-300">{valeriaTransactions.length} операций</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Доходы</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {income.toLocaleString('ru-RU')} ₽
-                </p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-green-400">Доходы:</span>
+                <span className="font-semibold text-green-400">{valeriaIncome.toLocaleString('ru-RU')} ₽</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-red-400">Расходы:</span>
+                <span className="font-semibold text-red-400">{valeriaExpenses.toLocaleString('ru-RU')} ₽</span>
+              </div>
+              <div className="border-t border-white/20 pt-2">
+                <div className="flex justify-between">
+                  <span className="text-white font-medium">Баланс:</span>
+                  <span className={`font-bold text-xl ${valeriaBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {valeriaBalance.toLocaleString('ru-RU')} ₽
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="card">
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 rounded-lg mr-3">
-                <TrendingDown className="h-6 w-6 text-red-600" />
+          {/* Общий баланс */}
+          <div className="profile-card bg-gradient-to-r from-yellow-500/20 to-orange-600/20 border-yellow-500/30">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="h-12 w-12 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-full flex items-center justify-center mr-3">
+                  <Wallet className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Семейный</h3>
+                  <p className="text-sm text-gray-300">Общий баланс</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Расходы</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {expenses.toLocaleString('ru-RU')} ₽
-                </p>
+            </div>
+            <div className="text-center">
+              <div className={`text-3xl font-bold ${totalBalance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {totalBalance.toLocaleString('ru-RU')} ₽
               </div>
+              <p className="text-gray-300 text-sm mt-1">
+                {transactions.length} всего операций
+              </p>
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
           <button
             onClick={() => setShowAddModal(true)}
             className="btn-primary flex items-center justify-center gap-2"
@@ -185,51 +259,39 @@ export default function Dashboard() {
             Добавить операцию
           </button>
           
-          {categories.length === 0 && (
-            <button
-              onClick={async () => {
-                const { createDefaultCategories } = await import('../services/categoryService');
-                await createDefaultCategories(currentUser.uid);
-              }}
-              className="btn-secondary flex items-center justify-center gap-2"
-            >
-              <Settings size={20} />
-              Создать категории
-            </button>
-          )}
+          <button
+            onClick={addSampleData}
+            className="btn-secondary flex items-center justify-center gap-2"
+          >
+            <PieChart size={20} />
+            Добавить примеры
+          </button>
           
-          {transactions.length === 0 && categories.length > 0 && (
-            <button
-              onClick={async () => {
-                const { addDoc, collection } = await import('firebase/firestore');
-                const { db } = await import('../firebase');
-                
-                // Создаем примеры операций
-                const sampleTransactions = [
-                  { type: 'income', amount: 50000, category: 'Зарплата', description: 'Зарплата за октябрь', date: new Date() },
-                  { type: 'expense', amount: 1200, category: 'Продукты', description: 'Покупки в магазине', date: new Date() },
-                  { type: 'expense', amount: 800, category: 'Транспорт', description: 'Проезд на автобусе', date: new Date() }
-                ];
-                
-                for (const transaction of sampleTransactions) {
-                  await addDoc(collection(db, 'transactions'), {
-                    ...transaction,
-                    userId: currentUser.uid,
-                    createdAt: new Date()
-                  });
-                }
-              }}
-              className="btn-secondary flex items-center justify-center gap-2"
-            >
-              📊 Добавить примеры
-            </button>
-          )}
+          <button
+            onClick={async () => {
+              const { createDefaultCategories } = await import('../services/categoryService');
+              await createDefaultCategories(currentUser.uid);
+            }}
+            className="btn-secondary flex items-center justify-center gap-2"
+          >
+            <Settings size={20} />
+            Создать категории
+          </button>
+          
+          <button
+            onClick={() => alert('Функция в разработке')}
+            className="btn-secondary flex items-center justify-center gap-2"
+          >
+            <Target size={20} />
+            Цели и лимиты
+          </button>
         </div>
 
         {/* Transactions */}
         <div className="card">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <CreditCard size={24} />
               Последние операции
             </h2>
           </div>

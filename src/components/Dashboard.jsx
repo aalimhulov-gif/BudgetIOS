@@ -101,20 +101,33 @@ export default function Dashboard() {
   };
 
   const addSampleData = async () => {
-    const sampleTransactions = [
-      { type: 'income', amount: 80000, category: 'Зарплата', description: 'Зарплата Артур', owner: 'artur', date: new Date() },
-      { type: 'income', amount: 60000, category: 'Зарплата', description: 'Зарплата Валерия', owner: 'valeria', date: new Date() },
-      { type: 'expense', amount: 15000, category: 'Продукты', description: 'Покупки в Перекрестке', owner: 'artur', date: new Date() },
-      { type: 'expense', amount: 8000, category: 'Развлечения', description: 'Кино и ресторан', owner: 'valeria', date: new Date() },
-      { type: 'expense', amount: 25000, category: 'Коммунальные услуги', description: 'Квартплата', owner: 'artur', date: new Date() }
-    ];
-    
-    for (const transaction of sampleTransactions) {
-      await addDoc(collection(db, 'transactions'), {
-        ...transaction,
-        userId: currentUser.uid,
-        createdAt: new Date()
-      });
+    try {
+      // Сначала создаем категории, если их нет
+      if (categories.length === 0) {
+        const { createDefaultCategories } = await import('../services/categoryService');
+        await createDefaultCategories(currentUser.uid);
+      }
+
+      const sampleTransactions = [
+        { type: 'income', amount: 80000, category: 'Зарплата', description: 'Зарплата Артур', owner: 'artur', date: new Date() },
+        { type: 'income', amount: 60000, category: 'Зарплата', description: 'Зарплата Валерия', owner: 'valeria', date: new Date() },
+        { type: 'expense', amount: 15000, category: 'Продукты', description: 'Покупки в Перекрестке', owner: 'artur', date: new Date() },
+        { type: 'expense', amount: 8000, category: 'Развлечения', description: 'Кино и ресторан', owner: 'valeria', date: new Date() },
+        { type: 'expense', amount: 25000, category: 'Коммунальные услуги', description: 'Квартплата', owner: 'artur', date: new Date() }
+      ];
+      
+      for (const transaction of sampleTransactions) {
+        await addDoc(collection(db, 'transactions'), {
+          ...transaction,
+          userId: currentUser.uid,
+          createdAt: new Date()
+        });
+      }
+      
+      alert('Примеры данных успешно добавлены!');
+    } catch (error) {
+      console.error('Ошибка при добавлении примеров:', error);
+      alert('Ошибка при добавлении примеров. Попробуйте еще раз.');
     }
   };
 
@@ -249,6 +262,20 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Инструкции для пользователя */}
+        {transactions.length === 0 && (
+          <div className="card mb-8 bg-gradient-to-r from-blue-500/20 to-purple-600/20 border-blue-500/30">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-white mb-3">🚀 Начните использовать BudgetIOS</h3>
+              <div className="text-sm text-gray-300 space-y-2">
+                <p><strong>1. Создать категории</strong> - добавит основные категории доходов и расходов</p>
+                <p><strong>2. Тестовые данные</strong> - добавит примеры операций для Артур и Валерия</p>
+                <p><strong>3. Добавить операцию</strong> - создать новую операцию (доход или расход)</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
           <button
@@ -260,17 +287,43 @@ export default function Dashboard() {
           </button>
           
           <button
-            onClick={addSampleData}
+            onClick={async () => {
+              try {
+                console.log('Тестирую добавление операции...');
+                const testTransaction = {
+                  type: 'expense',
+                  amount: 1000,
+                  category: 'Тест',
+                  description: 'Тестовая операция',
+                  owner: 'artur',
+                  userId: currentUser.uid,
+                  createdAt: new Date(),
+                  date: new Date()
+                };
+                
+                await addDoc(collection(db, 'transactions'), testTransaction);
+                alert('ТЕСТ УСПЕШЕН! Операция добавлена в Firebase');
+              } catch (error) {
+                console.error('Ошибка тестовой операции:', error);
+                alert('ОШИБКА: ' + error.message);
+              }
+            }}
             className="btn-secondary flex items-center justify-center gap-2"
           >
-            <PieChart size={20} />
-            Добавить примеры
+            <Target size={20} />
+            ТЕСТ Firebase
           </button>
           
           <button
             onClick={async () => {
-              const { createDefaultCategories } = await import('../services/categoryService');
-              await createDefaultCategories(currentUser.uid);
+              try {
+                const { createDefaultCategories } = await import('../services/categoryService');
+                await createDefaultCategories(currentUser.uid);
+                alert('Категории успешно созданы! Теперь можете добавлять операции.');
+              } catch (error) {
+                console.error('Ошибка при создании категорий:', error);
+                alert('Ошибка при создании категорий. Попробуйте еще раз.');
+              }
             }}
             className="btn-secondary flex items-center justify-center gap-2"
           >
@@ -279,11 +332,11 @@ export default function Dashboard() {
           </button>
           
           <button
-            onClick={() => alert('Функция в разработке')}
+            onClick={addSampleData}
             className="btn-secondary flex items-center justify-center gap-2"
           >
-            <Target size={20} />
-            Цели и лимиты
+            <PieChart size={20} />
+            Тестовые данные
           </button>
         </div>
 

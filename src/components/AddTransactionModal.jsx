@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { addDoc, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { X, Plus } from 'lucide-react';
+import { X } from 'lucide-react';
 
 export default function AddTransactionModal({ isOpen, onClose, categories }) {
   const { currentUser } = useAuth();
@@ -11,43 +11,47 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
     amount: '',
     category: '',
     description: '',
-    owner: 'artur', // По умолчанию Артур
+    owner: 'artur',
     date: new Date().toISOString().split('T')[0]
   });
-  const [newCategory, setNewCategory] = useState('');
-  const [showNewCategory, setShowNewCategory] = useState(false);
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!currentUser) return;
+    
+    if (!currentUser) {
+      alert('Ошибка: пользователь не авторизован');
+      return;
+    }
+
+    if (!formData.amount || !formData.category) {
+      alert('Пожалуйста, заполните все обязательные поля');
+      return;
+    }
 
     try {
       setLoading(true);
+      console.log('Начинаю добавление операции...');
+      console.log('Данные формы:', formData);
 
-      let categoryToUse = formData.category;
-
-      // Если нужно создать новую категорию
-      if (newCategory.trim() && showNewCategory) {
-        await addDoc(collection(db, 'categories'), {
-          name: newCategory.trim(),
-          userId: currentUser.uid,
-          createdAt: new Date()
-        });
-        categoryToUse = newCategory.trim();
-      }
-
-      // Добавление транзакции
-      await addDoc(collection(db, 'transactions'), {
-        ...formData,
-        category: categoryToUse,
+      const transactionData = {
+        type: formData.type,
         amount: parseFloat(formData.amount),
+        category: formData.category,
+        description: formData.description || '',
+        owner: formData.owner,
         userId: currentUser.uid,
         createdAt: new Date(),
         date: new Date(formData.date)
-      });
+      };
+      
+      console.log('Сохраняю в Firebase:', transactionData);
+      const docRef = await addDoc(collection(db, 'transactions'), transactionData);
+      console.log('Операция добавлена с ID:', docRef.id);
+      
+      alert('✅ Операция успешно добавлена!');
 
       // Сброс формы
       setFormData({
@@ -55,13 +59,13 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
         amount: '',
         category: '',
         description: '',
+        owner: 'artur',
         date: new Date().toISOString().split('T')[0]
       });
-      setNewCategory('');
-      setShowNewCategory(false);
       onClose();
     } catch (error) {
-      console.error('Ошибка при добавлении транзакции:', error);
+      console.error('❌ Ошибка при добавлении операции:', error);
+      alert('❌ Ошибка: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -78,22 +82,22 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
   // Фильтрация категорий по типу
   const filteredCategories = categories.filter(cat => {
     if (formData.type === 'income') {
-      return ['Зарплата', 'Подработка', 'Инвестиции', 'Другое'].includes(cat.name);
+      return cat.type === 'income' || ['Зарплата', 'Подработка', 'Инвестиции'].includes(cat.name);
     } else {
-      return !['Зарплата', 'Подработка', 'Инвестиции'].includes(cat.name);
+      return cat.type === 'expense' || !['Зарплата', 'Подработка', 'Инвестиции'].includes(cat.name);
     }
   });
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold text-gray-900">
+      <div className="card max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-white/20">
+          <h2 className="text-xl font-semibold text-white">
             Добавить операцию
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-300 hover:text-white transition-colors"
           >
             <X size={24} />
           </button>
@@ -102,7 +106,7 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Тип операции */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Тип операции
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -133,7 +137,7 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
 
           {/* Владелец */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Владелец
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -164,7 +168,7 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
 
           {/* Сумма */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white mb-1">
               Сумма (₽)
             </label>
             <input
@@ -182,63 +186,28 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
 
           {/* Категория */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white mb-1">
               Категория
             </label>
-            {!showNewCategory ? (
-              <div className="space-y-2">
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                  className="input-field"
-                  required
-                >
-                  <option value="">Выберите категорию</option>
-                  {filteredCategories.map(cat => (
-                    <option key={cat.id} value={cat.name}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setShowNewCategory(true)}
-                  className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
-                >
-                  <Plus size={16} />
-                  Создать новую категорию
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="input-field"
-                  placeholder="Название новой категории"
-                  required
-                />
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowNewCategory(false);
-                      setNewCategory('');
-                    }}
-                    className="text-sm text-gray-600 hover:text-gray-800"
-                  >
-                    Отмена
-                  </button>
-                </div>
-              </div>
-            )}
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              className="input-field"
+              required
+            >
+              <option value="">Выберите категорию</option>
+              {filteredCategories.map(cat => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Описание */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white mb-1">
               Описание (необязательно)
             </label>
             <input
@@ -253,7 +222,7 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
 
           {/* Дата */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-white mb-1">
               Дата
             </label>
             <input
@@ -280,11 +249,7 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
               disabled={loading}
               className="flex-1 btn-primary"
             >
-              {loading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>
-              ) : (
-                'Добавить'
-              )}
+              {loading ? 'Добавление...' : 'Добавить'}
             </button>
           </div>
         </form>

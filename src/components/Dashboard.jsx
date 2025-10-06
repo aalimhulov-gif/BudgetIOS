@@ -184,6 +184,46 @@ export default function Dashboard() {
             <Plus size={20} />
             Добавить операцию
           </button>
+          
+          {categories.length === 0 && (
+            <button
+              onClick={async () => {
+                const { createDefaultCategories } = await import('../services/categoryService');
+                await createDefaultCategories(currentUser.uid);
+              }}
+              className="btn-secondary flex items-center justify-center gap-2"
+            >
+              <Settings size={20} />
+              Создать категории
+            </button>
+          )}
+          
+          {transactions.length === 0 && categories.length > 0 && (
+            <button
+              onClick={async () => {
+                const { addDoc, collection } = await import('firebase/firestore');
+                const { db } = await import('../firebase');
+                
+                // Создаем примеры операций
+                const sampleTransactions = [
+                  { type: 'income', amount: 50000, category: 'Зарплата', description: 'Зарплата за октябрь', date: new Date() },
+                  { type: 'expense', amount: 1200, category: 'Продукты', description: 'Покупки в магазине', date: new Date() },
+                  { type: 'expense', amount: 800, category: 'Транспорт', description: 'Проезд на автобусе', date: new Date() }
+                ];
+                
+                for (const transaction of sampleTransactions) {
+                  await addDoc(collection(db, 'transactions'), {
+                    ...transaction,
+                    userId: currentUser.uid,
+                    createdAt: new Date()
+                  });
+                }
+              }}
+              className="btn-secondary flex items-center justify-center gap-2"
+            >
+              📊 Добавить примеры
+            </button>
+          )}
         </div>
 
         {/* Transactions */}

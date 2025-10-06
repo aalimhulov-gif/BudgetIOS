@@ -21,7 +21,12 @@ export function AuthProvider({ children }) {
   async function signup(email, password) {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     // Создаем базовые категории для нового пользователя
-    await createDefaultCategories(result.user.uid);
+    try {
+      await createDefaultCategories(result.user.uid);
+      console.log('Категории созданы при регистрации');
+    } catch (error) {
+      console.error('Ошибка создания категорий при регистрации:', error);
+    }
     return result;
   }
 

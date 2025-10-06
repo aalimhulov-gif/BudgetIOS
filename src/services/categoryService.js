@@ -3,6 +3,8 @@ import { db } from '../firebase';
 
 // Создание базовых категорий для нового пользователя
 export const createDefaultCategories = async (userId) => {
+  console.log('Создаю базовые категории для пользователя:', userId);
+  
   const defaultCategories = [
     // Категории доходов
     { name: 'Зарплата', type: 'income', userId },
@@ -26,7 +28,10 @@ export const createDefaultCategories = async (userId) => {
       query(collection(db, 'categories'), where('userId', '==', userId))
     );
 
+    console.log('Существующие категории:', existingCategories.size);
+
     if (existingCategories.empty) {
+      console.log('Создаю базовые категории...');
       // Добавляем категории по умолчанию
       const promises = defaultCategories.map(category =>
         addDoc(collection(db, 'categories'), {
@@ -36,7 +41,9 @@ export const createDefaultCategories = async (userId) => {
       );
       
       await Promise.all(promises);
-      console.log('Базовые категории созданы');
+      console.log('Базовые категории созданы успешно!');
+    } else {
+      console.log('Категории уже существуют');
     }
   } catch (error) {
     console.error('Ошибка при создании базовых категорий:', error);

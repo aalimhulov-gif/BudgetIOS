@@ -42,7 +42,10 @@ export default function Dashboard() {
         transactionsList.push({ id: doc.id, ...doc.data() });
       });
       setTransactions(transactionsList);
-      setLoading(false);
+      setLoading(false); // Загрузка завершена даже если транзакций нет
+    }, (error) => {
+      console.error('Ошибка получения транзакций:', error);
+      setLoading(false); // Завершаем загрузку даже при ошибке
     });
 
     return () => unsubscribe();
@@ -63,6 +66,8 @@ export default function Dashboard() {
         categoriesList.push({ id: doc.id, ...doc.data() });
       });
       setCategories(categoriesList);
+    }, (error) => {
+      console.error('Ошибка получения категорий:', error);
     });
 
     return () => unsubscribe();

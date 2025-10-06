@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import AddTransactionModal from './AddTransactionModal';
 import TransactionList from './TransactionList';
+import { testFirebaseConnection } from '../services/firebaseTest';
 
 export default function Dashboard() {
   const { currentUser, logout } = useAuth();
@@ -33,7 +34,15 @@ export default function Dashboard() {
 
   // Подписка на транзакции в реальном времени
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.log('❌ Dashboard: Пользователь не авторизован');
+      return;
+    }
+
+    console.log('🔄 Dashboard: Подписываюсь на транзакции для пользователя:', currentUser.uid);
+    
+    // Запускаем тест Firebase подключения
+    testFirebaseConnection();
 
     const transactionsQuery = query(
       collection(db, 'transactions'),
@@ -42,14 +51,19 @@ export default function Dashboard() {
     );
 
     const unsubscribe = onSnapshot(transactionsQuery, (snapshot) => {
+      console.log('📊 Dashboard: Получены транзакции, количество:', snapshot.size);
       const transactionsList = [];
       snapshot.forEach((doc) => {
-        transactionsList.push({ id: doc.id, ...doc.data() });
+        const data = { id: doc.id, ...doc.data() };
+        console.log('📝 Dashboard: Транзакция:', data);
+        transactionsList.push(data);
       });
       setTransactions(transactionsList);
       setLoading(false);
     }, (error) => {
-      console.error('Ошибка получения транзакций:', error);
+      console.error('❌ Dashboard: Ошибка получения транзакций:', error);
+      console.error('❌ Dashboard: Код ошибки:', error.code);
+      console.error('❌ Dashboard: Сообщение:', error.message);
       setLoading(false);
     });
 
@@ -58,7 +72,12 @@ export default function Dashboard() {
 
   // Подписка на категории в реальном времени
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      console.log('❌ Dashboard: Пользователь не авторизован для категорий');
+      return;
+    }
+
+    console.log('🏷️ Dashboard: Подписываюсь на категории для пользователя:', currentUser.uid);
 
     const categoriesQuery = query(
       collection(db, 'categories'),
@@ -66,13 +85,18 @@ export default function Dashboard() {
     );
 
     const unsubscribe = onSnapshot(categoriesQuery, (snapshot) => {
+      console.log('📋 Dashboard: Получены категории, количество:', snapshot.size);
       const categoriesList = [];
       snapshot.forEach((doc) => {
-        categoriesList.push({ id: doc.id, ...doc.data() });
+        const data = { id: doc.id, ...doc.data() };
+        console.log('🏷️ Dashboard: Категория:', data);
+        categoriesList.push(data);
       });
       setCategories(categoriesList);
     }, (error) => {
-      console.error('Ошибка получения категорий:', error);
+      console.error('❌ Dashboard: Ошибка получения категорий:', error);
+      console.error('❌ Dashboard: Код ошибки:', error.code);
+      console.error('❌ Dashboard: Сообщение:', error.message);
     });
 
     return () => unsubscribe();
@@ -277,7 +301,7 @@ export default function Dashboard() {
         )}
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <button
             onClick={() => setShowAddModal(true)}
             className="btn-primary flex items-center justify-center gap-2"
@@ -289,40 +313,12 @@ export default function Dashboard() {
           <button
             onClick={async () => {
               try {
-                console.log('Тестирую добавление операции...');
-                const testTransaction = {
-                  type: 'expense',
-                  amount: 1000,
-                  category: 'Тест',
-                  description: 'Тестовая операция',
-                  owner: 'artur',
-                  userId: currentUser.uid,
-                  createdAt: new Date(),
-                  date: new Date()
-                };
-                
-                await addDoc(collection(db, 'transactions'), testTransaction);
-                alert('ТЕСТ УСПЕШЕН! Операция добавлена в Firebase');
-              } catch (error) {
-                console.error('Ошибка тестовой операции:', error);
-                alert('ОШИБКА: ' + error.message);
-              }
-            }}
-            className="btn-secondary flex items-center justify-center gap-2"
-          >
-            <Target size={20} />
-            ТЕСТ Firebase
-          </button>
-          
-          <button
-            onClick={async () => {
-              try {
                 const { createDefaultCategories } = await import('../services/categoryService');
                 await createDefaultCategories(currentUser.uid);
-                alert('Категории успешно созданы! Теперь можете добавлять операции.');
+                alert('Категории созданы! Теперь можете добавлять операции.');
               } catch (error) {
                 console.error('Ошибка при создании категорий:', error);
-                alert('Ошибка при создании категорий. Попробуйте еще раз.');
+                alert('Ошибка создания категорий: ' + error.message);
               }
             }}
             className="btn-secondary flex items-center justify-center gap-2"
@@ -336,7 +332,7 @@ export default function Dashboard() {
             className="btn-secondary flex items-center justify-center gap-2"
           >
             <PieChart size={20} />
-            Тестовые данные
+            Добавить примеры
           </button>
         </div>
 

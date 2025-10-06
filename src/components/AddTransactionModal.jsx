@@ -21,20 +21,22 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    console.log('🚀 Начинаю добавление операции');
+    console.log('👤 Пользователь:', currentUser?.uid);
+    console.log('📝 Данные формы:', formData);
+
     if (!currentUser) {
-      alert('Ошибка: пользователь не авторизован');
+      alert('❌ Ошибка: пользователь не авторизован');
       return;
     }
 
     if (!formData.amount || !formData.category) {
-      alert('Пожалуйста, заполните все обязательные поля');
+      alert('❌ Заполните все поля (сумма и категория)');
       return;
     }
 
     try {
       setLoading(true);
-      console.log('Начинаю добавление операции...');
-      console.log('Данные формы:', formData);
 
       const transactionData = {
         type: formData.type,
@@ -47,11 +49,12 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
         date: new Date(formData.date)
       };
       
-      console.log('Сохраняю в Firebase:', transactionData);
-      const docRef = await addDoc(collection(db, 'transactions'), transactionData);
-      console.log('Операция добавлена с ID:', docRef.id);
+      console.log('💾 Сохраняю в Firebase:', transactionData);
       
-      alert('✅ Операция успешно добавлена!');
+      const docRef = await addDoc(collection(db, 'transactions'), transactionData);
+      
+      console.log('✅ Успешно! ID документа:', docRef.id);
+      alert('✅ Операция добавлена!');
 
       // Сброс формы
       setFormData({
@@ -63,9 +66,17 @@ export default function AddTransactionModal({ isOpen, onClose, categories }) {
         date: new Date().toISOString().split('T')[0]
       });
       onClose();
+      
     } catch (error) {
-      console.error('❌ Ошибка при добавлении операции:', error);
-      alert('❌ Ошибка: ' + error.message);
+      console.error('❌ Ошибка Firebase:', error);
+      console.error('❌ Код ошибки:', error.code);
+      console.error('❌ Сообщение:', error.message);
+      
+      if (error.code === 'permission-denied') {
+        alert('❌ Нет прав доступа к базе данных. Проверьте Firebase Security Rules.');
+      } else {
+        alert('❌ Ошибка: ' + error.message);
+      }
     } finally {
       setLoading(false);
     }

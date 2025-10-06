@@ -40,16 +40,22 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('🔐 AuthContext: Изменение состояния авторизации:', user ? `Пользователь ${user.uid}` : 'Не авторизован');
       setCurrentUser(user);
       
       // Если пользователь только что вошел, проверим категории
       if (user) {
+        console.log('👤 AuthContext: Пользователь авторизован:', user.uid);
+        console.log('📧 AuthContext: Email:', user.email);
         try {
           const { createDefaultCategories } = await import('../services/categoryService');
+          console.log('🏷️ AuthContext: Проверяю категории для пользователя...');
           await createDefaultCategories(user.uid);
         } catch (error) {
-          console.error('Ошибка проверки категорий:', error);
+          console.error('❌ AuthContext: Ошибка проверки категорий:', error);
         }
+      } else {
+        console.log('❌ AuthContext: Пользователь не авторизован');
       }
       
       setLoading(false);

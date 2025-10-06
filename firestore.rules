@@ -1,0 +1,45 @@
+// Firebase Firestore Security Rules для BudgetIOS
+// Скопируйте эти правила в Firebase Console -> Firestore Database -> Правила
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Правила для коллекции транзакций
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Правила для коллекции категорий
+    match /categories/{categoryId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && 
+        request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Блокируем доступ ко всем остальным документам
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/*
+ИНСТРУКЦИЯ ПО УСТАНОВКЕ:
+
+1. Откройте Firebase Console: https://console.firebase.google.com/
+2. Выберите проект "budget-ami"
+3. Перейдите в "Firestore Database"
+4. Нажмите на вкладку "Правила" (Rules)
+5. Скопируйте правила выше и вставьте их
+6. Нажмите "Опубликовать" (Publish)
+
+Эти правила разрешают:
+- Чтение и запись только авторизованным пользователям
+- Доступ только к своим собственным данным (где userId = auth.uid)
+- Создание новых документов только со своим userId
+*/
